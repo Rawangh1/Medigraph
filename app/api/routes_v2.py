@@ -22,6 +22,7 @@ from app.models.schemas import (
 )
 from app.services.similarity_medicine_service import get_similarity_medicine_service
 from app.utils.logger import get_logger
+from app.services.llm_service import get_llm_service
 
 logger = get_logger(__name__)
 
@@ -142,9 +143,22 @@ async def search_by_symptom(request: SymptomSearchRequest):
         # Get similarity medicine service
         service = get_similarity_medicine_service()
         
-        # Execute symptom-based search
+        llm = get_llm_service()
+
+        # Join the sentence(s) into one text
+        user_text = " ".join(request.symptoms)
+
+        analysis = llm.analyze_symptoms(user_text)
+
+        if analysis and analysis.get("identified_conditions"):
+            extracted_symptoms = analysis["identified_conditions"]
+        else:
+            extracted_symptoms = request.symptoms
+
+        logger.info(f"Extracted symptoms: {extracted_symptoms}")
+
         result = service.search_by_symptom(
-            symptoms=request.symptoms,
+            symptoms=extracted_symptoms,
             top_k=request.top_k,
             min_similarity=request.min_similarity
         )
